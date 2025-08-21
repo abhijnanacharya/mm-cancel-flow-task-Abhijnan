@@ -1,5 +1,6 @@
 "use client";
 
+import SubscriptionCancellationFlowContent from "@/components/cancellation/SubscriptionCancellationFlowContent";
 import SubscriptionCancellationIntro from "@/components/cancellation/SubscriptionCancellationIntro";
 import Modal from "@/components/ui/Modal";
 import { useState } from "react";
@@ -399,15 +400,8 @@ export default function ProfilePage() {
         </div>
       </div>
       <Modal isOpen={showCancelFlow} onClose={() => setShowCancelFlow(false)}>
-        <SubscriptionCancellationIntro
-          onYes={() => {
-            console.log("Yes clicked");
-            setShowCancelFlow(false);
-          }}
-          onNo={() => {
-            console.log("No clicked");
-            setShowCancelFlow(false);
-          }}
+        <SubscriptionCancellationFlowContent
+          onRequestClose={() => setShowCancelFlow(false)}
         />
       </Modal>
     </div>
