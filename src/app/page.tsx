@@ -1,42 +1,55 @@
 "use client";
 
 import SubscriptionCancellationFlowContent from "@/components/cancellation/SubscriptionCancellationFlowContent";
-import SubscriptionCancellationIntro from "@/components/cancellation/SubscriptionCancellationIntro";
 import Modal from "@/components/ui/Modal";
-import { useState } from "react";
+import { useActiveSubscription } from "@/hooks/useActiveSub";
+import { useMemo, useState } from "react";
 
-// Mock user data for UI display
+// Mock user data for UI display / mock flow
 const mockUser = {
-  email: "user@example.com",
-  id: "1",
+  email: "user1@example.com",
+  id: "550e8400-e29b-41d4-a716-446655440001",
 };
 
-// Mock subscription data for UI display
+// Mock subscription data for UI display (fallbacks)
 const mockSubscriptionData = {
   status: "active",
   isTrialSubscription: false,
   cancelAtPeriodEnd: false,
   currentPeriodEnd: new Date(
     Date.now() + 30 * 24 * 60 * 60 * 1000
-  ).toISOString(), // 30 days from now
+  ).toISOString(), // +30 days
   monthlyPrice: 25,
   isUCStudent: false,
   hasManagedAccess: false,
-  managedOrganization: null,
+  managedOrganization: null as null | string,
   downsellAccepted: false,
 };
 
 export default function ProfilePage() {
-  const [loading] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [showCancelFlow, setShowCancelFlow] = useState(false);
-
-  // New state for settings toggle
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+
+  const {
+    loading: subLoading,
+    error: subError,
+    subscriptionId,
+    monthlyPrice,
+  } = useActiveSubscription();
+
+  // Bridge values: always provide *some* id/price so child props are concrete
+  const effectiveSubscriptionId = useMemo(
+    () => subscriptionId ?? "73c5fdb0-e386-41db-bed4-c57a032faed7",
+    [subscriptionId]
+  );
+  const effectiveMonthlyPrice = useMemo(
+    () => monthlyPrice ?? mockSubscriptionData.monthlyPrice,
+    [monthlyPrice]
+  );
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
-    // Simulate sign out delay
     setTimeout(() => {
       console.log("User signed out");
       setIsSigningOut(false);
@@ -46,62 +59,6 @@ export default function ProfilePage() {
   const handleClose = () => {
     console.log("Navigate to jobs");
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-12">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white shadow rounded-lg overflow-hidden">
-            {/* Header skeleton */}
-            <div className="px-6 py-8 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
-              <div className="flex items-center justify-between">
-                <div className="h-8 w-40 bg-gradient-to-r from-gray-200 to-gray-300 rounded animate-pulse"></div>
-                <div className="flex space-x-3">
-                  <div className="h-10 w-32 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg animate-pulse"></div>
-                  <div className="h-10 w-24 bg-gradient-to-r from-gray-200 to-gray-300 rounded-md animate-pulse"></div>
-                </div>
-              </div>
-            </div>
-
-            {/* Profile Info skeleton */}
-            <div className="px-6 py-6 border-b border-gray-200">
-              <div className="h-6 w-56 bg-gradient-to-r from-gray-200 to-gray-300 rounded mb-4 animate-pulse"></div>
-              <div className="space-y-6">
-                <div>
-                  <div className="h-4 w-20 bg-gradient-to-r from-gray-200 to-gray-300 rounded mb-2 animate-pulse"></div>
-                  <div className="h-5 w-48 bg-gradient-to-r from-gray-200 to-gray-300 rounded animate-pulse"></div>
-                </div>
-                <div>
-                  <div className="h-4 w-36 bg-gradient-to-r from-gray-200 to-gray-300 rounded mb-2 animate-pulse"></div>
-                  <div className="h-5 w-20 bg-gradient-to-r from-gray-200 to-gray-300 rounded animate-pulse"></div>
-                </div>
-                <div>
-                  <div className="h-4 w-48 bg-gradient-to-r from-gray-200 to-gray-300 rounded mb-2 animate-pulse"></div>
-                  <div className="h-5 w-32 bg-gradient-to-r from-gray-200 to-gray-300 rounded animate-pulse"></div>
-                </div>
-              </div>
-            </div>
-
-            {/* Support skeleton */}
-            <div className="px-6 py-6 border-b border-gray-200">
-              <div className="h-6 w-24 bg-gradient-to-r from-gray-200 to-gray-300 rounded mb-4 animate-pulse"></div>
-              <div className="h-12 w-full bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg animate-pulse"></div>
-            </div>
-
-            {/* Subscription Management skeleton */}
-            <div className="px-6 py-6">
-              <div className="h-6 w-56 bg-gradient-to-r from-gray-200 to-gray-300 rounded mb-4 animate-pulse"></div>
-              <div className="space-y-4">
-                <div className="h-12 w-full bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg animate-pulse"></div>
-                <div className="h-12 w-full bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg animate-pulse delay-75"></div>
-                <div className="h-12 w-full bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg animate-pulse delay-150"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 relative">
@@ -262,10 +219,7 @@ export default function ProfilePage() {
           {/* Settings Toggle Button */}
           <div className="px-6 py-6">
             <button
-              onClick={() => {
-                setShowAdvancedSettings(!showAdvancedSettings);
-                console.log("Settings toggled:", !showAdvancedSettings);
-              }}
+              onClick={() => setShowAdvancedSettings((v) => !v)}
               className="inline-flex items-center justify-center w-full px-4 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm group"
             >
               <svg
@@ -279,7 +233,7 @@ export default function ProfilePage() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756.426-1.756 2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
                 />
                 <path
                   strokeLinecap="round"
@@ -315,93 +269,90 @@ export default function ProfilePage() {
               }`}
             >
               <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <div>
-                  <div className="space-y-3">
-                    <button
-                      onClick={() => {
-                        console.log("Update card clicked");
-                      }}
-                      className="inline-flex items-center justify-center w-full px-4 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm"
+                <div className="space-y-3">
+                  <button
+                    onClick={() => console.log("Update card clicked")}
+                    className="inline-flex items-center justify-center w-full px-4 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4 mr-2"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 mr-2"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-                        />
-                      </svg>
-                      <span className="text-sm font-medium">
-                        Update payment method
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        console.log("Invoice history clicked");
-                      }}
-                      className="inline-flex items-center justify-center w-full px-4 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 mr-2"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                        />
-                      </svg>
-                      <span className="text-sm font-medium">
-                        View billing history
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        console.log("Cancel button clicked - no action");
-                      }}
-                      className="inline-flex items-center justify-center w-full px-4 py-3 bg-white border border-red-200 text-red-600 rounded-lg hover:bg-red-50 hover:border-red-300 transition-all duration-200 shadow-sm group"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                         strokeWidth={2}
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                        />
-                      </svg>
-                      <span
-                        className="text-sm font-medium"
-                        onClick={() => setShowCancelFlow(true)}
-                      >
-                        Cancel Migrate Mate
-                      </span>
-                    </button>
-                  </div>
+                        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                      />
+                    </svg>
+                    <span className="text-sm font-medium">
+                      Update payment method
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => console.log("Invoice history clicked")}
+                    className="inline-flex items-center justify-center w-full px-4 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4 mr-2"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                      />
+                    </svg>
+                    <span className="text-sm font-medium">
+                      View billing history
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowCancelFlow(true)}
+                    className="inline-flex items-center justify-center w-full px-4 py-3 bg-white border border-red-200 text-red-600 rounded-lg hover:bg-red-50 hover:border-red-300 transition-all duration-200 shadow-sm group"
+                    disabled={subLoading}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                      />
+                    </svg>
+                    <span className="text-sm font-medium">
+                      Cancel Migrate Mate
+                    </span>
+                  </button>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Cancellation Flow Modal */}
       <Modal isOpen={showCancelFlow} onClose={() => setShowCancelFlow(false)}>
         <SubscriptionCancellationFlowContent
           onRequestClose={() => setShowCancelFlow(false)}
+          subscriptionId={"b0ead7a2-7004-4bd8-b8d4-0c3a1c51214f"}
+          monthlyPrice={monthlyPrice ?? 25}
+          mockUserId={"550e8400-e29b-41d4-a716-446655440001"}
         />
       </Modal>
     </div>

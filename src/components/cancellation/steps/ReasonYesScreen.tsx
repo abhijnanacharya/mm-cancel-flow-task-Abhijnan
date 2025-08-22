@@ -1,4 +1,5 @@
 "use client";
+
 import * as React from "react";
 import Image from "next/image";
 import StepProgressPills from "@/components/ui/global/StepProgressPills";
@@ -11,25 +12,61 @@ export type ReasonYesData = {
   interviewed: "0" | "1-2" | "3-5" | "5+" | null;
 };
 
+function formatMoney(n: number, currency = "USD") {
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency,
+    }).format(n);
+  } catch {
+    return `$${n.toFixed(2)}`;
+  }
+}
+
 export default function ReasonYesScreen({
   data,
   onChange,
   onBack,
   onContinue,
+  // Offer (visible even when coming from downsell)
+  offerPrice,
+  compareAtPrice,
+  onAcceptOffer,
+  offerLabel = "Get 50% off",
+  // Flow/UI
+  fromDownsell = false, // ⬅️ NEW: if true, hide the Yes/No question
+  stepIndex = 1,
+  stepTotal = 3,
+  brandName = "Migrate Mate",
 }: {
   data: ReasonYesData;
   onChange: (patch: Partial<ReasonYesData>) => void;
   onBack: () => void;
   onContinue: () => void;
+
+  offerPrice?: number;
+  compareAtPrice?: number;
+  onAcceptOffer?: () => void;
+  offerLabel?: string;
+
+  fromDownsell?: boolean;
+  stepIndex?: number;
+  stepTotal?: number;
+  brandName?: string;
 }) {
-  const canContinue =
-    data.foundWithMM === "Yes"
-      ? Boolean(data.applied && data.emailed && data.interviewed)
-      : data.foundWithMM === "No";
+  const showFoundQuestion = !fromDownsell;
+  const heading = fromDownsell
+    ? `Help us understand how you were using ${brandName}.`
+    : "Congrats on the new role! 🎉";
+  const canContinue = fromDownsell
+    ? Boolean(data.applied && data.emailed && data.interviewed)
+    : data.foundWithMM === "Yes"
+    ? Boolean(data.applied && data.emailed && data.interviewed)
+    : data.foundWithMM === "No";
 
   return (
     <section className="pt-4 antialiased">
-      {/* Header (mobile-friendly title + pills) */}
+      {/* Header */}
       <div className="px-4 sm:px-8">
         <div className="flex items-center justify-between">
           <button
@@ -59,7 +96,7 @@ export default function ReasonYesScreen({
             <h2 className="text-sm font-medium text-neutral-700">
               Subscription Cancellation
             </h2>
-            <StepProgressPills current={0} total={3} />
+            <StepProgressPills current={stepIndex} total={stepTotal} />
           </div>
 
           <div className="w-6" />
@@ -69,7 +106,11 @@ export default function ReasonYesScreen({
           <h2 className="text-sm font-medium text-neutral-700">
             Subscription Cancellation
           </h2>
-          <StepProgressPills current={0} total={3} className="mt-1" />
+          <StepProgressPills
+            current={stepIndex}
+            total={stepTotal}
+            className="mt-1"
+          />
         </div>
       </div>
 
@@ -77,25 +118,35 @@ export default function ReasonYesScreen({
 
       {/* Content */}
       <div className="px-4 sm:px-8 py-6 grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8 items-start">
-        {/* Left: questions */}
+        {/* Left: questions + copy */}
         <div>
           <h3 className="text-[23px] md:text-3xl font-semibold leading-[1.2] md:leading-[1.1] tracking-tight [text-wrap:balance] text-neutral-900">
-            Congrats on the new role! 🎉
+            {heading}
           </h3>
 
-          <OptionRow
-            label="Did you find this job with MigrateMate?*"
-            columns={2}
-            mobileCols={2}
-            options={["Yes", "No"]}
-            value={data.foundWithMM}
-            onChange={(v) => onChange({ foundWithMM: v as "Yes" | "No" })}
-          />
-          {data.foundWithMM === "Yes" && (
+          <p className="mt-2 text-sm text-neutral-600">
+            Your answers help us improve the product and support other job
+            seekers like you.
+          </p>
+
+          {showFoundQuestion && (
+            <OptionRow
+              className="mt-6"
+              label={`Did you find this job with ${brandName}?*`}
+              columns={2}
+              mobileCols={2}
+              options={["Yes", "No"]}
+              value={data.foundWithMM}
+              onChange={(v) => onChange({ foundWithMM: v as "Yes" | "No" })}
+            />
+          )}
+
+          {/* When fromDownsell, always show the 3 usage questions */}
+          {(fromDownsell || data.foundWithMM === "Yes") && (
             <>
               <OptionRow
                 className="mt-6"
-                label="How many roles did you apply for through Migrate Mate?*"
+                label={`How many roles did you apply for through ${brandName}?*`}
                 columns={4}
                 mobileCols={4}
                 options={["0", "1-5", "6-20", "20+"]}
@@ -130,7 +181,27 @@ export default function ReasonYesScreen({
               />
             </>
           )}
-          <hr className="mt-6 mb-4 border-neutral-200" />
+
+          {/* Offer CTA */}
+          {offerPrice != null && onAcceptOffer && (
+            <button
+              type="button"
+              onClick={onAcceptOffer}
+              className="mt-6 w-full rounded-xl px-4 py-2.5 md:py-3 text-sm md:text-base font-semibold
+                         bg-emerald-600 text-white hover:bg-emerald-700 transition"
+            >
+              {offerLabel} | {formatMoney(offerPrice)}
+              {typeof compareAtPrice === "number" && (
+                <span className="ml-2 line-through opacity-80">
+                  {formatMoney(compareAtPrice)}
+                </span>
+              )}
+              <span className="sr-only"> per month</span>
+            </button>
+          )}
+
+          <hr className="mt-4 mb-4 border-neutral-200" />
+
           <button
             type="button"
             disabled={!canContinue}
@@ -146,9 +217,9 @@ export default function ReasonYesScreen({
           </button>
         </div>
 
-        {/* Right: image (hidden on mobile) */}
+        {/* Right: image */}
         <div
-          className="relative hidden md:block w-full h-full overflow-hidden rounded-xl shadow-sm ring-1 ring-black/5 "
+          className="relative hidden md:block w-full h-full overflow-hidden rounded-xl shadow-sm ring-1 ring-black/5"
           aria-hidden
         >
           <Image
@@ -181,17 +252,20 @@ function OptionRow({
   mobileCols?: 2 | 4;
   className?: string;
 }) {
-  const mobileClass =
-    mobileCols === 2
-      ? "grid-cols-2"
-      : mobileCols === 4
-      ? "grid-cols-4"
-      : "grid-cols-4";
+  const mobileClass = mobileCols === 2 ? "grid-cols-2" : "grid-cols-4";
+  const desktopClass =
+    columns === 2
+      ? "md:grid-cols-2"
+      : columns === 3
+      ? "md:grid-cols-3"
+      : "md:grid-cols-4";
 
   return (
     <div className={className}>
       <p className="text-xs sm:text-sm font-medium text-neutral-900">{label}</p>
-      <div className={`mt-2 grid gap-2 sm:gap-3 ${mobileClass} `}>
+      <div
+        className={`mt-2 grid gap-2 sm:gap-3 ${mobileClass} ${desktopClass}`}
+      >
         {options.map((opt) => {
           const active = value === opt;
           return (

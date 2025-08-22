@@ -8,7 +8,6 @@ type Props = {
   imageSrc?: string;
   imageAlt?: string;
   className?: string;
-  // A/B copy overrides
   title?: string;
   headline?: string;
   question?: string;

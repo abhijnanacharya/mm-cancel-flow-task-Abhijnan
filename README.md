@@ -11,6 +11,7 @@ Implement the Figma-designed cancellation journey exactly on mobile + desktop, p
 ## What's Provided
 
 This repository contains:
+
 - ✅ Next.js + TypeScript + Tailwind scaffold
 - ✅ `seed.sql` with users table (25/29 USD plans) and empty cancellations table
 - ✅ Local Supabase configuration for development
@@ -24,6 +25,7 @@ This repository contains:
 - **Supabase** (Postgres + Row-Level Security)
 
 > **Alternative stacks allowed** if your solution:
+>
 > 1. Runs with `npm install && npm run dev`
 > 2. Persists to a Postgres-compatible database
 > 3. Enforces table-level security
@@ -31,22 +33,26 @@ This repository contains:
 ## Must-Have Features
 
 ### 1. Progressive Flow (Figma Design)
+
 - Implement the exact cancellation journey from provided Figma
 - Ensure pixel-perfect fidelity on both mobile and desktop
 - Handle all user interactions and state transitions
 
 ### 2. Deterministic A/B Testing (50/50 Split)
+
 - **On first entry**: Assign variant via cryptographically secure RNG
 - **Persist** variant to `cancellations.downsell_variant` field
 - **Reuse** variant on repeat visits (never re-randomize)
 
 **Variant A**: No downsell screen
 **Variant B**: Show "$10 off" offer
+
 - Price $25 → $15, Price $29 → $19
 - **Accept** → Log action, take user back to profile page (NO ACTUAL PAYMENT PROCESSING REQUIRED)
 - **Decline** → Continue to reason selection in flow
 
 ### 3. Data Persistence
+
 - Mark subscription as `pending_cancellation` in database
 - Create cancellation record with:
   - `user_id`
@@ -56,12 +62,14 @@ This repository contains:
   - `created_at` (timestamp)
 
 ### 4. Security Requirements
+
 - **Row-Level Security (RLS)** policies
 - **Input validation** on all user inputs
 - **CSRF/XSS protection**
 - Secure handling of sensitive data
 
 ### 5. Reproducible Setup
+
 - `npm run db:setup` creates schema and seed data (local development)
 - Clear documentation for environment setup
 
@@ -82,6 +90,7 @@ This repository contains:
 ## Database Schema
 
 The `seed.sql` file provides a **starting point** with:
+
 - `users` table with sample users
 - `subscriptions` table with $25 and $29 plans
 - `cancellations` table (minimal structure - **you'll need to expand this**)
@@ -90,6 +99,7 @@ The `seed.sql` file provides a **starting point** with:
 ### Important: Schema Design Required
 
 The current `cancellations` table is intentionally minimal. You'll need to:
+
 - **Analyze the cancellation flow requirements** from the Figma design
 - **Design appropriate table structure(s)** to capture all necessary data
 - **Consider data validation, constraints, and relationships**
@@ -127,3 +137,37 @@ Review the challenge requirements carefully. If you have questions about specifi
 ---
 
 **Good luck!** We're excited to see your implementation.
+
+```mermaid
+classDiagram
+  class USERS {
+    uuid id
+    text email
+    timestamptz created_at
+  }
+  class SUBSCRIPTIONS {
+    uuid id
+    uuid user_id
+    int monthly_price
+    text status
+    timestamptz created_at
+    timestamptz updated_at
+    timestamptz cancel_requested_at
+    boolean cancel_at_period_end
+    timestamptz current_period_end
+    timestamptz cancel_effective_at
+    timestamptz cancelled_at
+  }
+  class CANCELLATIONS {
+    uuid id
+    uuid user_id
+    uuid subscription_id
+    text downsell_variant
+    text reason
+    boolean accepted_downsell
+    timestamptz created_at
+  }
+  USERS "1" --> "many" SUBSCRIPTIONS : has
+  USERS "1" --> "many" CANCELLATIONS : creates
+  SUBSCRIPTIONS "1" --> "many" CANCELLATIONS : generates
+```
