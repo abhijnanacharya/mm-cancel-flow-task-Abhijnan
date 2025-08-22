@@ -19,7 +19,7 @@ function bucket50(seed: string) {
 
 type Props = {
   /** Any stable string — subscriptionId, userId, or email */
-  seed: string;
+  variant: "A" | "B";
   /** Full monthly price in dollars (e.g., 25) */
   monthlyPrice: number;
   onBack: () => void;
@@ -30,13 +30,13 @@ type Props = {
 };
 
 export default function ReasonNoScreen({
-  seed,
+  variant,
   monthlyPrice,
   onBack,
   onAcceptOffer,
   onDecline,
 }: Props) {
-  const showOffer = React.useMemo(() => bucket50(seed), [seed]);
+  const showOffer = variant === "B";
 
   const formatter = React.useMemo(
     () =>

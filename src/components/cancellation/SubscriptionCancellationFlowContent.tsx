@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SubscriptionCancellationIntro from "@/components/cancellation/SubscriptionCancellationIntro";
 import ReasonYesScreen, {
   ReasonYesData,
@@ -107,6 +107,79 @@ export default function SubscriptionCancellationFlowContent({
     setData((d) => ({ ...d, secureVisa: { ...d.secureVisa, ...patch } }));
 
   const startedRef = useRef(false);
+
+  // Fix the auto-save effect
+  useEffect(() => {
+    if (step === "cancellationSuccess" && cancellationId && !starting) {
+      console.log("Auto-saving with cancellationId:", cancellationId);
+      savedataCB();
+    }
+  }, [step, cancellationId, starting]);
+
+  // Replace saveDataWithSubscriptionId with this simpler version
+  const savedataCB = useCallback(async () => {
+    if (!cancellationId) {
+      console.log("No cancellation ID available for save");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setErrorMsg(null);
+
+      console.log("Saving with cancellationId:", cancellationId);
+
+      const res = await fetch("/api/cancellations/complete", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          cancellationId,
+          userId: mockUserId,
+          reason: data.enterDetails.details ?? "",
+          acceptedDownsell: Boolean(acceptedDownsell),
+          foundWithMM:
+            data.reasonYes.foundWithMM === "Yes"
+              ? true
+              : data.reasonYes.foundWithMM === "No"
+              ? false
+              : null,
+          applied: data.reasonYes.applied,
+          emailed: data.reasonYes.emailed,
+          interviewed: data.reasonYes.interviewed,
+          hasCompanyLawyer:
+            data.secureVisa.hasCompanyLawyer === "Yes"
+              ? true
+              : data.secureVisa.hasCompanyLawyer === "No"
+              ? false
+              : null,
+          visaName: data.secureVisa.visaName ?? "",
+          cancelReason: cancelReason,
+          otherText: cancelReason === "other" ? otherText : null,
+        }),
+      });
+
+      const responseData = await res.json().catch(() => ({}));
+      console.log("Save API response:", responseData);
+
+      if (!res.ok) {
+        throw new Error(responseData?.error || "Request failed");
+      }
+
+      console.log("Data saved successfully");
+    } catch (e: any) {
+      console.error("Error saving data:", e);
+      setErrorMsg(e?.message || "Failed to save data");
+    } finally {
+      setSaving(false);
+    }
+  }, [
+    cancellationId,
+    mockUserId,
+    data,
+    acceptedDownsell,
+    cancelReason,
+    otherText,
+  ]);
   useEffect(() => {
     if (startedRef.current) return;
     startedRef.current = true;
@@ -116,22 +189,28 @@ export default function SubscriptionCancellationFlowContent({
       try {
         setStarting(true);
         setErrorMsg(null);
-
+        console.log("Making API call with:", {
+          subscriptionId,
+          userId: mockUserId,
+        });
         const res = await fetch("/api/cancellations/start", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ subscriptionId, userId: mockUserId }),
         });
-
+        console.log("API response status:", res.status);
         const j = await res.json().catch(() => ({}));
+        console.log("API response data:", j);
         if (!res.ok) throw new Error(j?.error || "Failed to start flow");
 
         if (!alive) return;
+        console.log("Setting cancellationId:", j.cancellationId);
         setCancellationId(j.cancellationId);
+        sessionStorage.setItem("mm_cancellation_id", j.cancellationId);
         setVariant(j.variant as Variant);
         setServerMonthlyPrice(j.monthlyPrice as number);
       } catch (e: any) {
-        console.error(e);
+        console.error("API Error:", e);
         if (alive) {
           setErrorMsg(e?.message || "Unable to start cancellation.");
           setVariant(variantFromSeed(subscriptionId || getOrCreateLocalSeed()));
@@ -163,21 +242,33 @@ export default function SubscriptionCancellationFlowContent({
   // What we'll *offer* (may be discounted for variant B)
   const offeredMonthly = priceForVariant(effectiveMonthly, effectiveVariant);
 
-  // --- API: finalize ---
-  async function handleDone() {
-    if (!cancellationId) {
-      onRequestClose();
-      return;
-    }
+  // --- API: save data ---
+  async function saveDataWithSubscriptionId() {
     try {
       setSaving(true);
       setErrorMsg(null);
 
+      console.log(
+        "Saving cancellation data with subscriptionId:",
+        subscriptionId
+      );
+      const startRes = await fetch("/api/cancellations/start", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ subscriptionId, userId: mockUserId }),
+      });
+
+      const startData = await startRes.json();
+      if (!startRes.ok || !startData.cancellationId) {
+        throw new Error("Failed to get cancellation ID");
+      }
+      console.log("In here!");
       const res = await fetch("/api/cancellations/complete", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          cancellationId,
+          cancellationId: startData.cancellationId,
+          subscriptionId: subscriptionId, // Use the prop directly
           userId: mockUserId,
           reason: data.enterDetails.details ?? "",
           acceptedDownsell: Boolean(acceptedDownsell),
@@ -197,19 +288,116 @@ export default function SubscriptionCancellationFlowContent({
               ? false
               : null,
           visaName: data.secureVisa.visaName ?? "",
+          cancelReason: cancelReason,
+          otherText: cancelReason === "other" ? otherText : null,
         }),
       });
 
+      const responseData = await res.json().catch(() => ({}));
+      console.log("Save API response:", responseData);
+
       if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j?.error || "Request failed");
+        throw new Error(responseData?.error || "Request failed");
       }
+
+      console.log("Data saved successfully");
+    } catch (e: any) {
+      console.error("Error saving data:", e);
+      setErrorMsg(e?.message || "Failed to save data");
+    } finally {
+      setSaving(false);
+    }
+  }
+  async function handleDone() {
+    const effectiveId =
+      cancellationId || sessionStorage.getItem("mm_cancellation_id");
+
+    console.log("handleDone called with:");
+    console.log("- cancellationId from state:", cancellationId);
+    console.log(
+      "- cancellationId from sessionStorage:",
+      sessionStorage.getItem("mm_cancellation_id")
+    );
+    console.log("- effectiveId:", effectiveId);
+
+    if (!effectiveId) {
+      console.log("No cancellation ID available, closing modal");
+      onRequestClose();
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setErrorMsg(null);
+
+      console.log("Completing cancellation with data:", {
+        cancellationId: effectiveId,
+        userId: mockUserId,
+        reason: data.enterDetails.details ?? "",
+        acceptedDownsell: Boolean(acceptedDownsell),
+        foundWithMM:
+          data.reasonYes.foundWithMM === "Yes"
+            ? true
+            : data.reasonYes.foundWithMM === "No"
+            ? false
+            : null,
+        applied: data.reasonYes.applied,
+        emailed: data.reasonYes.emailed,
+        interviewed: data.reasonYes.interviewed,
+        hasCompanyLawyer:
+          data.secureVisa.hasCompanyLawyer === "Yes"
+            ? true
+            : data.secureVisa.hasCompanyLawyer === "No"
+            ? false
+            : null,
+        visaName: data.secureVisa.visaName ?? "",
+        cancelReason,
+        otherText,
+      });
+
+      const res = await fetch("/api/cancellations/complete", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          cancellationId: effectiveId,
+          userId: mockUserId,
+          reason: data.enterDetails.details ?? "",
+          acceptedDownsell: Boolean(acceptedDownsell),
+          foundWithMM:
+            data.reasonYes.foundWithMM === "Yes"
+              ? true
+              : data.reasonYes.foundWithMM === "No"
+              ? false
+              : null,
+          applied: data.reasonYes.applied,
+          emailed: data.reasonYes.emailed,
+          interviewed: data.reasonYes.interviewed,
+          hasCompanyLawyer:
+            data.secureVisa.hasCompanyLawyer === "Yes"
+              ? true
+              : data.secureVisa.hasCompanyLawyer === "No"
+              ? false
+              : null,
+          visaName: data.secureVisa.visaName ?? "",
+          cancelReason: cancelReason,
+          otherText: cancelReason === "other" ? otherText : null,
+        }),
+      });
+
+      const responseData = await res.json().catch(() => ({}));
+      console.log("Complete API response:", responseData);
+
+      if (!res.ok) {
+        throw new Error(responseData?.error || "Request failed");
+      }
+
+      console.log("Cancellation completed successfully");
       onRequestClose();
     } catch (e: any) {
-      console.error(e);
+      console.error("Error completing cancellation:", e);
       setErrorMsg(
         e?.message ||
-          "We couldn’t complete your cancellation. Please try again."
+          "We couldn't complete your cancellation. Please try again."
       );
     } finally {
       setSaving(false);
@@ -246,11 +434,10 @@ export default function SubscriptionCancellationFlowContent({
     return (
       <SubscriptionCancellationIntro
         onYes={() => {
-          // ✅ make sure we are NOT in downsell mode anymore
           setFromDownsell(false);
           setAcceptedDownsell(false);
 
-          // (optional) clear prior answers so the first question shows normally
+          // clear prior answers so the first question shows normally
           setData((d) => ({
             ...d,
             gotJob: true,
@@ -265,7 +452,6 @@ export default function SubscriptionCancellationFlowContent({
           setStep("reasonYes");
         }}
         onNo={() => {
-          // Fresh “No” path also shouldn’t inherit downsell state
           setFromDownsell(false);
           setAcceptedDownsell(false);
           setStep("reasonNo");
@@ -284,12 +470,23 @@ export default function SubscriptionCancellationFlowContent({
           setStep(fromDownsell ? "cancelReason" : "enterDetails")
         }
         fromDownsell={fromDownsell}
-        offerPrice={fromDownsell ? offeredMonthly : undefined}
-        compareAtPrice={fromDownsell ? effectiveMonthly : undefined}
-        onAcceptOffer={fromDownsell ? applyDownsellAndRoute : undefined}
+        offerPrice={
+          fromDownsell && effectiveVariant === "B" ? offeredMonthly : undefined
+        }
+        compareAtPrice={
+          fromDownsell && effectiveVariant === "B"
+            ? effectiveMonthly
+            : undefined
+        }
+        onAcceptOffer={
+          fromDownsell && effectiveVariant === "B"
+            ? applyDownsellAndRoute
+            : undefined
+        }
       />
     );
   }
+
   if (step == "cancelReason") {
     return (
       <CancellationReason
@@ -299,15 +496,15 @@ export default function SubscriptionCancellationFlowContent({
           if (reason !== undefined) setCancelReason(reason);
           if (newOtherText !== undefined) setOtherText(newOtherText);
         }}
-        onBack={() => setStep("reasonNo")} // Replace with your previous step
+        onBack={() => setStep("reasonNo")}
         onContinue={() => {
           // Handle cancellation completion logic here
           console.log("Cancellation reason:", cancelReason);
           if (cancelReason === "other") {
             console.log("Other text:", otherText);
           }
-          // Navigate to next step or complete cancellation
-          setStep("goodbye"); // Replace with your next step
+
+          setStep("goodbye");
         }}
         onAcceptOffer={() => {
           // Handle the 50% off offer acceptance
@@ -325,7 +522,7 @@ export default function SubscriptionCancellationFlowContent({
   if (step === "reasonNo") {
     return (
       <ReasonNoScreen
-        seed={seed}
+        variant={effectiveVariant}
         monthlyPrice={offeredMonthly}
         onBack={() => setStep("intro")}
         onAcceptOffer={applyDownsellAndRoute}
@@ -376,6 +573,7 @@ export default function SubscriptionCancellationFlowContent({
         daysLeft={daysLeft ?? null}
         nextBillingDate={currentPeriodEnd ?? null}
         monthlyPrice={monthlyPrice * 0.5}
+        originalPrice={monthlyPrice}
         imageSrc="/skyline.jpg"
       />
     );
@@ -384,6 +582,7 @@ export default function SubscriptionCancellationFlowContent({
   if (step === "cancellationSuccess") {
     return (
       <CancellationSuccessScreen
+        onPrimary={handleDone}
         hasCompanyLawyer={data.secureVisa.hasCompanyLawyer}
         requireVisaAssistance={data.secureVisa.visaName}
         onBack={() => setStep("secureVisa")}
@@ -407,7 +606,7 @@ export default function SubscriptionCancellationFlowContent({
   // done
   return (
     <section className="px-5 sm:px-8 pt-5 sm:pt-6 pb-6 sm:pb-8 text-center">
-      <h3 className="text-2xl font-semibold">You’re all set ✨</h3>
+      <h3 className="text-2xl font-semibold">You're all set ✨</h3>
       <p className="mt-2 text-neutral-600">
         {starting ? "Starting your cancellation…" : "Thanks for the feedback."}
       </p>

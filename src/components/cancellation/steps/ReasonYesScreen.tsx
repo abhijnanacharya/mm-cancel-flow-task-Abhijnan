@@ -34,7 +34,7 @@ export default function ReasonYesScreen({
   onAcceptOffer,
   offerLabel = "Get 50% off",
   // Flow/UI
-  fromDownsell = false, // ⬅️ NEW: if true, hide the Yes/No question
+  fromDownsell = false,
   stepIndex = 1,
   stepTotal = 3,
   brandName = "Migrate Mate",

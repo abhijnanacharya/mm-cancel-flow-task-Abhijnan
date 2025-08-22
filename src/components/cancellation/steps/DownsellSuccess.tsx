@@ -1,4 +1,3 @@
-// components/cancellation/DownsellSuccess.tsx
 "use client";
 
 import Image from "next/image";
@@ -7,22 +6,21 @@ import { useMemo } from "react";
 type Props = {
   /** CTA handler */
   onPrimary: () => void;
-  /** Close (top-right X) */
   onClose?: () => void;
 
-  /** Copy & data */
   headerTitle?: string; // defaults to "Subscription"
   headline?: string; // defaults to "Great choice, mate!"
   subheadlinePrefix?: string; // defaults to "You're still on the path to your dream role."
   subheadlineEmphasis?: string; // defaults to "Let's make it happen together!"
   daysLeft?: number | null; // shows "XX" if undefined
   nextBillingDate?: Date | string | null; // shows "XX date" if undefined
-  monthlyPrice?: number | null; // shows "$12.50" demo if undefined
+  monthlyPrice?: number | null; // The DISCOUNTED price (e.g., $12.50)
+  originalPrice?: number | null; // The ORIGINAL price (e.g., $25) - NEW PROP
   currency?: string; // "USD" by default
 
   /** Visuals */
-  imageSrc?: string; // defaults to "/skyline.jpg"
-  buttonText?: string; // defaults to "Land your dream role"
+  imageSrc?: string;
+  buttonText?: string;
   className?: string;
 };
 
@@ -36,6 +34,7 @@ export default function DownsellSuccess({
   daysLeft = null,
   nextBillingDate = null,
   monthlyPrice = null,
+  originalPrice = null,
   currency = "USD",
   imageSrc = "/skyline.jpg",
   buttonText = "Land your dream role",
@@ -55,7 +54,7 @@ export default function DownsellSuccess({
     });
   }, [nextBillingDate]);
 
-  const formattedPrice = useMemo(() => {
+  const formattedDiscountedPrice = useMemo(() => {
     if (monthlyPrice == null) return "$12.50";
     try {
       return new Intl.NumberFormat(undefined, {
@@ -66,6 +65,31 @@ export default function DownsellSuccess({
       return `$${monthlyPrice.toFixed(2)}`;
     }
   }, [monthlyPrice, currency]);
+
+  const formattedOriginalPrice = useMemo(() => {
+    if (originalPrice == null) return "$25.00";
+    try {
+      return new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency,
+      }).format(originalPrice);
+    } catch {
+      return `$${originalPrice.toFixed(2)}`;
+    }
+  }, [originalPrice, currency]);
+
+  const savingsAmount = useMemo(() => {
+    if (monthlyPrice == null || originalPrice == null) return "$12.50";
+    const savings = originalPrice - monthlyPrice;
+    try {
+      return new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency,
+      }).format(savings);
+    } catch {
+      return `$${savings.toFixed(2)}`;
+    }
+  }, [monthlyPrice, originalPrice, currency]);
 
   return (
     <section
@@ -117,16 +141,53 @@ export default function DownsellSuccess({
             <span className="text-violet-600">{subheadlineEmphasis}</span>
           </p>
 
+          {/* Discount highlight box */}
+          <div className="mt-6 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+              <span className="text-sm font-medium text-emerald-800">
+                50% Off Applied
+              </span>
+            </div>
+            <div className="flex items-baseline gap-3">
+              <span className="text-2xl font-bold text-emerald-700">
+                {formattedDiscountedPrice}
+                <span className="text-sm font-normal text-neutral-600">
+                  /month
+                </span>
+              </span>
+              <span className="text-lg text-neutral-500 line-through">
+                {formattedOriginalPrice}
+              </span>
+            </div>
+            <p className="text-xs text-emerald-700 mt-1">
+              You're saving {savingsAmount} per month
+            </p>
+          </div>
+
           <div className="mt-6 space-y-1.5 text-sm text-neutral-700">
-            <p>
-              You&apos;ve got{" "}
-              <strong>{daysLeft == null ? "XX" : daysLeft}</strong> days left on
-              your current plan.
-            </p>
-            <p>
-              Starting from <strong>{formattedDate}</strong>, your monthly
-              payment will be <strong>{formattedPrice}</strong>.
-            </p>
+            {daysLeft != null ? (
+              <p>
+                You've got <strong>{daysLeft}</strong> days left on your current
+                plan.
+              </p>
+            ) : (
+              <p>Your current plan will continue at the discounted rate.</p>
+            )}
+
+            {nextBillingDate ? (
+              <p>
+                Starting from <strong>{formattedDate}</strong>, your monthly
+                payment will be <strong>{formattedDiscountedPrice}</strong> (50%
+                off).
+              </p>
+            ) : (
+              <p>
+                Your next monthly payment will be{" "}
+                <strong>{formattedDiscountedPrice}</strong> (50% off).
+              </p>
+            )}
+
             <p className="text-xs italic text-neutral-500 mt-2">
               You can cancel anytime before then.
             </p>
