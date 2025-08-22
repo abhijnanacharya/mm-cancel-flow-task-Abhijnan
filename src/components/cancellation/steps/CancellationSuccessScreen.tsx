@@ -4,14 +4,16 @@ import Image from "next/image";
 import StepProgressPills from "@/components/ui/global/StepProgressPills";
 
 export default function CancellationSuccessScreen({
-  hasCompanyLawyer,
-  requireVisaAssistance,
+  onPrimary,
   onBack,
   onContinue,
+  hasCompanyLawyer,
+  requireVisaAssistance,
   contactName = "Mihailo Bozic",
   contactEmail = "mihailo@migratemate.co",
   contactAvatarSrc = "/profile.jpeg",
 }: {
+  onPrimary: () => void;
   hasCompanyLawyer: "Yes" | "No" | null;
   requireVisaAssistance?: string;
   onBack: () => void;
@@ -21,6 +23,7 @@ export default function CancellationSuccessScreen({
   contactAvatarSrc?: string;
 }) {
   const showVisaHelpVariant = hasCompanyLawyer === "No";
+
   return (
     <section className="pt-4 antialiased">
       {/* Header */}
@@ -139,7 +142,7 @@ export default function CancellationSuccessScreen({
             <hr className="mt-6 mb-4 border-neutral-200" />
             <button
               type="button"
-              onClick={onContinue}
+              onClick={onPrimary}
               className="w-full rounded-xl px-4 py-2.5 md:py-3 text-sm md:text-base font-medium transition bg-[#8952fc] text-white hover:bg-[#7b40fc]"
             >
               Finish

@@ -11,8 +11,8 @@ const mockUser = {
   id: "550e8400-e29b-41d4-a716-446655440001",
 };
 
-// Mock subscription data for UI display (fallbacks)
 const mockSubscriptionData = {
+  subscriptionId: "63701537-b0c6-4284-bb7b-97e786952380",
   status: "active",
   isTrialSubscription: false,
   cancelAtPeriodEnd: false,
@@ -39,14 +39,14 @@ export default function ProfilePage() {
   } = useActiveSubscription();
 
   // Bridge values: always provide *some* id/price so child props are concrete
-  const effectiveSubscriptionId = useMemo(
-    () => subscriptionId ?? "73c5fdb0-e386-41db-bed4-c57a032faed7",
-    [subscriptionId]
-  );
-  const effectiveMonthlyPrice = useMemo(
-    () => monthlyPrice ?? mockSubscriptionData.monthlyPrice,
-    [monthlyPrice]
-  );
+  // const effectiveSubscriptionId = useMemo(
+  //   () => subscriptionId ?? "73c5fdb0-e386-41db-bed4-c57a032faed7",
+  //   [subscriptionId]
+  // );
+  // const effectiveMonthlyPrice = useMemo(
+  //   () => monthlyPrice ?? mockSubscriptionData.monthlyPrice,
+  //   [monthlyPrice]
+  // );
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -319,7 +319,7 @@ export default function ProfilePage() {
                   <button
                     onClick={() => setShowCancelFlow(true)}
                     className="inline-flex items-center justify-center w-full px-4 py-3 bg-white border border-red-200 text-red-600 rounded-lg hover:bg-red-50 hover:border-red-300 transition-all duration-200 shadow-sm group"
-                    disabled={subLoading}
+                    // disabled={subLoading}
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -350,9 +350,11 @@ export default function ProfilePage() {
       <Modal isOpen={showCancelFlow} onClose={() => setShowCancelFlow(false)}>
         <SubscriptionCancellationFlowContent
           onRequestClose={() => setShowCancelFlow(false)}
-          subscriptionId={"b0ead7a2-7004-4bd8-b8d4-0c3a1c51214f"}
-          monthlyPrice={monthlyPrice ?? 25}
-          mockUserId={"550e8400-e29b-41d4-a716-446655440001"}
+          subscriptionId={mockSubscriptionData.subscriptionId}
+          monthlyPrice={mockSubscriptionData.monthlyPrice ?? 2900}
+          mockUserId={mockUser.id}
+          currentPeriodEnd={mockSubscriptionData.currentPeriodEnd}
+          daysLeft={30}
         />
       </Modal>
     </div>

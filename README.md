@@ -1,173 +1,207 @@
-# Migrate Mate - Subscription Cancellation Flow Challenge
+# Subscription Cancellation Flow
 
-## Overview
+A Next.js application implementing a sophisticated subscription cancellation flow with A/B testing, downsell offers, and comprehensive data collection.
 
-Convert an existing Figma design into a fully-functional subscription-cancellation flow for Migrate Mate. This challenge tests your ability to implement pixel-perfect UI, handle complex business logic, and maintain security best practices.
+## Features
 
-## Objective
+- **Multi-step cancellation wizard** with conditional logic
+- **A/B testing** with server-side variant assignment
+- **Downsell offers** (50% off) for variant B users
+- **Comprehensive data collection** including job search metrics and visa requirements
+- **Row Level Security (RLS)** with proper policy management
+- **Real-time data persistence** throughout the cancellation flow
 
-Implement the Figma-designed cancellation journey exactly on mobile + desktop, persist outcomes securely, and instrument the A/B downsell logic.
+## Tech Stack
 
-## What's Provided
+- **Frontend**: Next.js 14 (App Router), React, TypeScript, Tailwind CSS
+- **Backend**: Next.js API Routes, Supabase (PostgreSQL)
+- **Database**: PostgreSQL with RLS policies
+- **Validation**: Zod for schema validation
 
-This repository contains:
+## Prerequisites
 
-- ✅ Next.js + TypeScript + Tailwind scaffold
-- ✅ `seed.sql` with users table (25/29 USD plans) and empty cancellations table
-- ✅ Local Supabase configuration for development
-- ✅ Basic Supabase client setup in `src/lib/supabase.ts`
+- Node.js 18+
+- Supabase CLI
+- Git
 
-## Tech Stack (Preferred)
+## Setup Instructions
 
-- **Next.js** with App Router
-- **React** with TypeScript
-- **Tailwind CSS** for styling
-- **Supabase** (Postgres + Row-Level Security)
+### 1. Clone and Install
 
-> **Alternative stacks allowed** if your solution:
->
-> 1. Runs with `npm install && npm run dev`
-> 2. Persists to a Postgres-compatible database
-> 3. Enforces table-level security
+```bash
+git clone <repository-url>
+cd subscription-cancellation-flow
+npm install
+```
 
-## Must-Have Features
+### 2. Database Setup
 
-### 1. Progressive Flow (Figma Design)
+Start your local Supabase instance:
 
-- Implement the exact cancellation journey from provided Figma
-- Ensure pixel-perfect fidelity on both mobile and desktop
-- Handle all user interactions and state transitions
+```bash
+supabase start
+```
 
-### 2. Deterministic A/B Testing (50/50 Split)
+Run the database migration:
 
-- **On first entry**: Assign variant via cryptographically secure RNG
-- **Persist** variant to `cancellations.downsell_variant` field
-- **Reuse** variant on repeat visits (never re-randomize)
+```bash
+supabase db reset
+```
 
-**Variant A**: No downsell screen
-**Variant B**: Show "$10 off" offer
+Or manually execute the SQL schema in your Supabase dashboard using the provided `seed.sql` file.
 
-- Price $25 → $15, Price $29 → $19
-- **Accept** → Log action, take user back to profile page (NO ACTUAL PAYMENT PROCESSING REQUIRED)
-- **Decline** → Continue to reason selection in flow
+### 3. Environment Configuration
 
-### 3. Data Persistence
+Create `.env.local`:
 
-- Mark subscription as `pending_cancellation` in database
-- Create cancellation record with:
-  - `user_id`
-  - `downsell_variant` (A or B)
-  - `reason` (from user selection)
-  - `accepted_downsell` (boolean)
-  - `created_at` (timestamp)
+```env
+NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+NEXT_PUBLIC_SITE_ORIGIN=http://localhost:3000
+```
 
-### 4. Security Requirements
+Get your service role key from:
 
-- **Row-Level Security (RLS)** policies
-- **Input validation** on all user inputs
-- **CSRF/XSS protection**
-- Secure handling of sensitive data
+```bash
+supabase status
+```
 
-### 5. Reproducible Setup
+### 4. Start Development Server
 
-- `npm run db:setup` creates schema and seed data (local development)
-- Clear documentation for environment setup
+```bash
+npm run dev
+```
 
-## Out of Scope
-
-- **Payment processing** - Stub with comments only
-- **User authentication** - Use mock user data
-- **Email notifications** - Not required
-- **Analytics tracking** - Focus on core functionality
-
-## Getting Started
-
-1. **Clone this repository** `git clone [repo]`
-2. **Install dependencies**: `npm install`
-3. **Set up local database**: `npm run db:setup`
-4. **Start development**: `npm run dev`
+Visit `http://localhost:3000` to see the application.
 
 ## Database Schema
 
-The `seed.sql` file provides a **starting point** with:
+The application uses three main tables:
 
-- `users` table with sample users
-- `subscriptions` table with $25 and $29 plans
-- `cancellations` table (minimal structure - **you'll need to expand this**)
-- Basic RLS policies (enhance as needed)
+- **users**: Basic user information
+- **subscriptions**: Subscription data with pricing and status
+- **cancellations**: Cancellation flow data with A/B variant tracking
 
-### Important: Schema Design Required
+## Testing with Different Users
 
-The current `cancellations` table is intentionally minimal. You'll need to:
+### Default Test Users
 
-- **Analyze the cancellation flow requirements** from the Figma design
-- **Design appropriate table structure(s)** to capture all necessary data
-- **Consider data validation, constraints, and relationships**
-- **Ensure the schema supports the A/B testing requirements**
+The application comes with pre-seeded test data
 
-## Evaluation Criteria
+### Testing Different Scenarios
 
-- **Functionality (40%)**: Feature completeness and correctness
-- **Code Quality (25%)**: Clean, maintainable, well-structured code
-- **Pixel/UX Fidelity (15%)**: Accuracy to Figma design
-- **Security (10%)**: Proper RLS, validation, and protection
-- **Documentation (10%)**: Clear README and code comments
+1. **Change the mock user** in your component:
 
-## Deliverables
-
-1. **Working implementation** in this repository
-2. **NEW One-page README.md (replace this)** (≤600 words) explaining:
-   - Architecture decisions
-   - Security implementation
-   - A/B testing approach
-3. **Clean commit history** with meaningful messages
-
-## Timeline
-
-Submit your solution within **72 hours** of receiving this repository.
-
-## AI Tooling
-
-Using Cursor, ChatGPT, Copilot, etc. is **encouraged**. Use whatever accelerates your development—just ensure you understand the code and it runs correctly.
-
-## Questions?
-
-Review the challenge requirements carefully. If you have questions about specific implementation details, make reasonable assumptions and document them in your README.
-
----
-
-**Good luck!** We're excited to see your implementation.
-
-```mermaid
-classDiagram
-  class USERS {
-    uuid id
-    text email
-    timestamptz created_at
-  }
-  class SUBSCRIPTIONS {
-    uuid id
-    uuid user_id
-    int monthly_price
-    text status
-    timestamptz created_at
-    timestamptz updated_at
-    timestamptz cancel_requested_at
-    boolean cancel_at_period_end
-    timestamptz current_period_end
-    timestamptz cancel_effective_at
-    timestamptz cancelled_at
-  }
-  class CANCELLATIONS {
-    uuid id
-    uuid user_id
-    uuid subscription_id
-    text downsell_variant
-    text reason
-    boolean accepted_downsell
-    timestamptz created_at
-  }
-  USERS "1" --> "many" SUBSCRIPTIONS : has
-  USERS "1" --> "many" CANCELLATIONS : creates
-  SUBSCRIPTIONS "1" --> "many" CANCELLATIONS : generates
+```typescript
+// In your main component file
+const mockUser = {
+  email: "user2@example.com", // Change this
+  id: "550e8400-e29b-41d4-a716-446655440002", // And this
+};
 ```
+
+2. **Create new test users** via SQL:
+
+```sql
+-- Add new test user
+INSERT INTO users (id, email) VALUES
+('your-new-uuid', 'newuser@example.com');
+
+-- Add subscription for new user
+INSERT INTO subscriptions (id, user_id, monthly_price, status) VALUES
+('your-subscription-uuid', 'your-new-uuid', 2500, 'active');
+```
+
+3. **Test A/B variants** by clearing cancellation data:
+
+```sql
+-- Reset cancellation data to get new variant assignment
+DELETE FROM cancellations WHERE user_id = 'your-user-id';
+```
+
+### A/B Testing Behavior
+
+- **Variant A**: No downsell offers shown
+- **Variant B**: 50% off downsell offers displayed
+- Variant assignment is deterministic and sticky per user
+
+### Testing Different Flow Paths
+
+1. **Yes Flow** (User got a job):
+
+   - Answer "Yes" to initial question
+   - Complete job search metrics
+   - Fill visa requirements
+   - Reach cancellation success
+
+2. **No Flow** (User didn't get a job):
+
+   - Answer "No" to initial question
+   - See downsell offer (Variant B only)
+   - Either accept offer or continue to cancellation
+
+3. **Downsell Acceptance**:
+   - Decline initial offer
+   - Get second chance in usage questions
+   - Accept offer to see success screen
+
+## API Endpoints
+
+- `POST /api/cancellations/start` - Initialize cancellation flow
+- `POST /api/cancellations/complete` - Save final cancellation data
+
+## Key Components
+
+- `SubscriptionCancellationFlowContent` - Main flow orchestrator
+- `SubscriptionCancellationIntro` - Initial yes/no question
+- `ReasonYesScreen` - Job search metrics collection
+- `ReasonNoScreen` - Downsell offer presentation
+- `EnterDetailsScreen` - Feedback collection
+- `EnterVisaRequirementScreen` - Visa assistance questions
+- `CancellationSuccessScreen` - Flow completion
+- `DownsellSuccess` - Discount acceptance confirmation
+
+## Data Flow
+
+1. **Start API** creates cancellation record with A/B variant
+2. **User progresses** through conditional flow steps
+3. **Data auto-saves** when reaching cancellation success
+4. **Complete API** updates record with all collected information
+
+## Troubleshooting
+
+### Common Issues
+
+1. **"No cancellation ID"**: Ensure start API completes successfully
+2. **Database connection errors**: Check Supabase is running and environment variables are correct
+3. **RLS policy errors**: Verify you're using the service role key, not anon key
+4. **Variant not showing offers**: Check that user is assigned variant B
+
+### Reset Test Data
+
+```sql
+-- Clear all cancellation data
+DELETE FROM cancellations;
+
+-- Reset subscription statuses
+UPDATE subscriptions SET
+  status = 'active',
+  cancel_requested_at = NULL,
+  cancelled_at = NULL;
+```
+
+## Development Notes
+
+- Component state is preserved during the flow to prevent data loss
+- Auto-save occurs when users reach the success screen
+- Downsell eligibility can be enhanced with usage tracking
+- All monetary values are stored in cents in the database
+
+## Production Considerations
+
+- Add proper user authentication
+- Implement rate limiting on APIs
+- Add monitoring and analytics
+- Configure proper CORS policies
+- Set up database backups
+- Add email notifications for cancellations
