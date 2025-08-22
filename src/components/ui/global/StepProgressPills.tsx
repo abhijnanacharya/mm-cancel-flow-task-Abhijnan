@@ -30,7 +30,7 @@ export default function StepProgress({
           </>
         ) : (
           <>
-            Step {current} of {total}
+            Step {current == 0 ? 1 : current} of {total}
           </>
         )}
       </span>
